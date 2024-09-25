@@ -1,0 +1,185 @@
+#!/bin/sh
+#################################################################################
+#
+#   Lynis
+# ------------------
+#
+# Copyright 2007-2013, Michael Boelen
+# Copyright 2007-2021, CISOfy
+#
+# Website  : https://cisofy.com
+# Blog     : http://linux-audit.com
+# GitHub   : https://github.com/CISOfy/lynis
+#
+# Lynis comes with ABSOLUTELY NO WARRANTY. This is free software, and you are
+# welcome to redistribute it under the terms of the GNU General Public License.
+# See LICENSE file for usage of this software.
+#
+#################################################################################
+#
+# Privilynis
+#
+#################################################################################
+#
+    InsertSection "PRIVLYINIS: Privilege Escalation CVE Detection"
+#
+#################################################################################
+
+# Function to check if required commands are available
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+# Initial checks for kernel and glibc versions
+check_initial_conditions() {
+    # Check if 'uname' and 'ldd' commands exist
+    if ! command_exists uname || ! command_exists ldd; then
+        Display --indent 4 --text "- Required commands ('uname' or 'ldd') not found." --result WARNING --color RED
+        exit 1
+    fi
+
+    # Get kernel version
+    kernel_version=$(uname -r | cut -d '-' -f 1)
+    LogText "Installed kernel version: $kernel_version"
+
+    # Get glibc version
+    glibc_version=$(ldd --version | head -n 1 | awk '{print $NF}')
+    LogText "glibc version: $glibc_version"
+}
+
+# Run initial checks
+check_initial_conditions
+
+
+#################################################################################
+# Test        : CVE-2022-0847
+# Description : Check for Dirty Pipe vulnerability (CVE-2022-0847)
+
+
+Register --test-no CVE-2022-0847 --weight L --network NO --category security --description "Check for Dirty Pipe vulnerability (CVE-2022-0847)"
+if [ "${SKIPTEST}" -eq 0 ]; then
+     # Vulnerable kernel version range for CVE-2022-0847 (Dirty Pipe)
+    vulnerable_min_version_CVE_2022_0847="5.7.19"
+    vulnerable_max_version_CVE_2022_0847="5.16.12"
+
+    # Compare function for version strings
+    compare_versions() {
+        ver1=$(printf "%03d%03d%03d" $(echo "$1" | cut -d '-' -f1 | tr '.' ' '))
+        ver2=$(printf "%03d%03d%03d" $(echo "$2" | cut -d '-' -f1 | tr '.' ' '))
+
+        if [ "$ver1" -lt "$ver2" ]; then
+            return 1   # version1 < version2
+        elif [ "$ver1" -gt "$ver2" ]; then
+            return 2   # version1 > version2
+        else
+            return 0   # version1 == version2
+        fi
+    }
+
+    # Check if the installed kernel version is vulnerable
+    compare_versions "$kernel_version" "$vulnerable_min_version_CVE_2022_0847"
+    min_compare_CVE_2022_0847=$?
+
+    compare_versions "$kernel_version" "$vulnerable_max_version_CVE_2022_0847"
+    max_compare_CVE_2022_0847=$?
+
+    if [ $min_compare_CVE_2022_0847 -eq 2 ] && [ $max_compare_CVE_2022_0847 -eq 1 ]; then
+        Display --indent 4 --text "- CVE-2022-0847" --result WARNING --color RED
+        LogText "Result: The system is vulnerable to Dirty Pipe"
+        ReportWarning "CVE-2022-0847" "The system is vulnerable to Dirty Pipe"
+    else
+        Display --indent 4 --text "- CVE-2022-0847" --result OK --color GREEN
+        LogText "Result: The system is not vulnerable to Dirty Pipe"
+    fi
+fi
+
+################################################################################
+
+# Test        : CVE-2023-3269
+# Description : Check for StackRot vulnerability (CVE-2023-3269)
+
+Register --test-no CVE-2023-3269 --weight L --network NO --category security --description "Check for StackRot vulnerability (CVE-2023-3269)"
+if [ "${SKIPTEST}" -eq 0 ]; then
+    # Check for StackRot vulnerability
+    vulnerable_min_version_cve_2023_3269="6.0.0"
+    vulnerable_max_version_cve_2023_3269="6.5.0"
+
+    compare_versions() {
+        ver1=$(printf "%03d%03d%03d" $(echo "$1" | cut -d '-' -f1 | tr '.' ' '))
+        ver2=$(printf "%03d%03d%03d" $(echo "$2" | cut -d '-' -f1 | tr '.' ' '))
+
+        if [ "$ver1" -lt "$ver2" ]; then
+            return 1   # version1 < version2
+        elif [ "$ver1" -gt "$ver2" ]; then
+            return 2   # version1 > version2
+        else
+            return 0   # version1 == version2
+        fi
+    }
+
+    # Check if the installed kernel version is vulnerable
+    compare_versions "$kernel_version" "$vulnerable_min_version_cve_2023_3269"
+    min_compare_cve_2023_3269=$?
+
+    compare_versions "$kernel_version" "$vulnerable_max_version_cve_2023_3269"
+    max_compare_cve_2023_3269=$?
+
+    if [ $min_compare_cve_2023_3269 -eq 2 ] && [ $max_compare_cve_2023_3269 -eq 1 ]; then
+        Display --indent 4 --text "- CVE-2023-3269" --result WARNING --color RED
+        LogText "Result: The system is vulnerable to StackRot vulnerability"
+        ReportWarning "CVE-2023-3269" "The system is vulnerable to StackRot vulnerability"
+    else
+        Display --indent 4 --text "- CVE-2023-3269" --result OK --color GREEN
+        LogText "Result: The system is not vulnerable to StackRot vulnerability"
+    fi
+fi
+
+#################################################################################
+
+# Test        : CVE-2023-4911
+# Description : Check for Looney Tunables vulnerability (CVE-2023-4911)
+
+Register --test-no CVE-2023-4911 --weight H --network NO --category security --description "Check for Looney Tunables vulnerability (CVE-2023-4911)"
+if [ "${SKIPTEST}" -eq 0 ]; then
+    # Check for Looney Tunables vulnerability
+    vulnerable_min_glibc_cve_2023_4911="2.33"
+    vulnerable_max_glibc_cve_2023_4911="2.38"
+    
+    compare_versions() {
+    ver1=$(printf "%03d%03d%03d" $(echo "$1" | cut -d '-' -f1 | tr '.' ' '))
+    ver2=$(printf "%03d%03d%03d" $(echo "$2" | cut -d '-' -f1 | tr '.' ' '))
+
+    if [ "$ver1" -lt "$ver2" ]; then
+        return 1   # version1 < version2
+    elif [ "$ver1" -gt "$ver2" ]; then
+        return 2   # version1 > version2
+    else
+        return 0   # version1 == version2
+    fi
+}
+
+    # Check if the installed glibc version is vulnerable
+    compare_versions "$glibc_version" "$vulnerable_min_glibc_cve_2023_4911"
+    min_compare_cve_2023_4911=$?
+
+    compare_versions "$glibc_version" "$vulnerable_max_glibc_cve_2023_4911"
+    max_compare_cve_2023_4911=$?
+
+    if [ $min_compare_cve_2023_4911 -eq 2 ] && [ $max_compare_cve_2023_4911 -eq 1 ]; then
+        Display --indent 4 --text "- CVE-2023-4911" --result WARNING --color RED
+        LogText "Result: The system is vulnerable to Looney Tunables vulnerability"
+        ReportWarning "CVE-2023-4911" "The system is vulnerable to Looney Tunables vulnerability"
+    else
+        Display --indent 4 --text "- CVE-2023-4911" --result OK --color GREEN
+        LogText "Result: The system is not vulnerable to Looney Tunables vulnerability"
+    fi
+fi
+
+#################################################################################
+
+
+# Wait for keypress (unless --quick is being used)
+WaitForKeyPress
+
+#
+#================================================================================
+# Lynis - Security Auditing and System Hardening for Linux and UNIX - https://cisofy.com
